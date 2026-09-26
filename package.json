@@ -1,9 +1,9 @@
 {
   "name": "scope",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
-  "description": "Keep only the connectors a task needs, so every request carries a smaller context.",
+  "description": "Cut the tokens Claude Code re-sends on every request.",
   "type": "module",
   "engines": { "node": ">=20" },
   "bin": { "scope": "bin/scope.mjs" },
