@@ -1,6 +1,6 @@
 {
   "name": "scope",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Cut the tokens Claude Code re-sends on every request: connectors only when needed, save-state-and-clear at step ends, idle and big-skill warnings.",
   "author": {
     "name": "Kreycin",
