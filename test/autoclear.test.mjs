@@ -64,9 +64,10 @@ test('pending mark gives a recap once, only after a clear in the same folder', (
 test('desktop clear tool starts a fresh session: startup soon after the mark gets the recap', () => {
   const dir = tmp();
   const dl = tmp();
-  markPending(dir, { cwd: '/p', now: 1000 });
+  markPending(dir, { cwd: '/p', session: 'abc-123', now: 1000 });
   assert.equal(takePending(dir, { cwd: '/q', source: 'startup', now: 42_000, downloads: dl }), null);
-  assert.ok(takePending(dir, { cwd: '/p', source: 'startup', now: 42_000, downloads: dl }).includes('recap'));
+  const recap = takePending(dir, { cwd: '/p', source: 'startup', now: 42_000, downloads: dl });
+  assert.ok(recap.includes('recap') && recap.includes('claude --resume abc-123'));
 });
 
 test('only exports made during an auto clear are pruned, oldest to the Trash', () => {

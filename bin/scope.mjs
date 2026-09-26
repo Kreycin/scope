@@ -154,7 +154,7 @@ async function runHook(event, config) {
         if (d.note) {
           message = d.note.message;
           contexts.push(d.note.context);
-          if (d.autoClear) markPending(dataDir, { cwd: resolve(input.cwd) });
+          if (d.autoClear) markPending(dataDir, { cwd: resolve(input.cwd), session: input.session_id });
         }
       } catch {}
       if (config.bigSkill.enabled) try {

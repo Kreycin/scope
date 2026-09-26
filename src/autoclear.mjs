@@ -52,8 +52,8 @@ function writeJson(path, value) {
 }
 
 // Remember that a handoff asked for a clear, so the next clear in this folder gets a recap.
-export function markPending(dataDir, { cwd, now = Date.now() }) {
-  writeJson(join(dataDir, PENDING), { cwd, at: now });
+export function markPending(dataDir, { cwd, session, now = Date.now() }) {
+  writeJson(join(dataDir, PENDING), { cwd, session, at: now });
 }
 
 // SessionStart after a clear (or the desktop tool's fresh startup): consume the mark, record the exports made since it, return recap context.
@@ -69,10 +69,15 @@ export function takePending(dataDir, { cwd, source, now = Date.now(), downloads 
   if (!cleared || p.cwd !== cwd) return null;
   writeJson(path, null);
   recordExports(dataDir, downloads, p.at - 60000, now);
+  // The desktop app has no button to bring a cleared chat back; the CLI can.
+  const resume = /^[\w-]+$/.test(p.session ?? '')
+    ? `End the recap with one line: the old chat opens again in a terminal with \`claude --resume ${p.session}\`. `
+    : '';
   return (
     `scope: this session was cleared automatically after a handoff; the user no longer sees the old chat ` +
     `(an export zip is in ~/Downloads). Open your first reply with a 2-3 line recap in the user's language: ` +
     `what was just finished and what Next says, from the saved state below. ` +
+    resume +
     `Then load ${TITLE_TOOL} and set a short title (3-6 words) naming the current work, replacing the "${CLEARED_TITLE}" placeholder.`
   );
 }
