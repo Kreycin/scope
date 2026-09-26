@@ -91,3 +91,12 @@ test('only exports made during an auto clear are pruned, oldest to the Trash', (
   assert.ok(existsSync(made[2]));
   assert.ok(existsSync(join(trash, 'session-export-10.zip')));
 });
+
+test('recapMessage shows the first Next items', async () => {
+  const { recapMessage } = await import('../src/autoclear.mjs');
+  const m = recapMessage('# S\n## Next\n1. a\n2. b\n3. c\n4. d\n## Other\n- x\n');
+  assert.match(m, /chat cleared/);
+  assert.match(m, /1\. a[\s\S]*3\. c/);
+  assert.doesNotMatch(m, /4\. d|- x/);
+  assert.doesNotMatch(recapMessage(''), /Next:/);
+});

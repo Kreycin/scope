@@ -72,6 +72,14 @@ export function takePending(dataDir, { cwd, source, now = Date.now(), downloads 
   );
 }
 
+// Visible line for the empty screen after the clear: the first Next items from STATUS.md.
+export function recapMessage(status) {
+  const m = /^## Next[^\n]*\n([\s\S]*?)(?=^## |$(?![\s\S]))/m.exec(status ?? '');
+  const items = (m?.[1] ?? '').split('\n').map((l) => l.trim()).filter((l) => /^([-*]|\d+\.)\s/.test(l)).slice(0, 3);
+  const next = items.length ? '\nNext:\n' + items.map((l) => '  ' + l.slice(0, 160)).join('\n') : '';
+  return `scope: chat cleared after a handoff (old chat saved as a zip in ~/Downloads). Send any message to continue.${next}`;
+}
+
 // Exports this flow made: zips in Downloads created between the handoff and the clear.
 export function recordExports(dataDir, downloads, from, to) {
   let names = [];
