@@ -64,6 +64,10 @@ Headless SDK sessions (`CLAUDE_CODE_ENTRYPOINT=sdk-*`) skip the idle block, hand
 
 `npm test` runs offline. Hooks for a local checkout: `claude --plugin-dir /path/to/scope`.
 
+## License
+
+MIT, see [LICENSE](LICENSE).
+
 ---
 
 ## ภาษาไทย

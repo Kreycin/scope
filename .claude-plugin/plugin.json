@@ -7,6 +7,7 @@
     "url": "https://github.com/Kreycin"
   },
   "repository": "https://github.com/Kreycin/scope",
+  "license": "MIT",
   "hooks": {
     "SessionStart": [
       {
