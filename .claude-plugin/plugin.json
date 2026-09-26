@@ -1,0 +1,34 @@
+{
+  "name": "scope",
+  "version": "0.2.0",
+  "description": "Cut the tokens Claude Code re-sends on every request: connectors only when needed, save-state-and-clear at step ends, idle and big-skill warnings.",
+  "author": {
+    "name": "Kreycin",
+    "url": "https://github.com/Kreycin"
+  },
+  "repository": "https://github.com/Kreycin/scope",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/scope.mjs\" hook-start",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/scope.mjs\" hook-prompt",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "scope",
+  "description": "scope: fewer tokens per Claude Code request.",
+  "owner": {
+    "name": "Kreycin",
+    "url": "https://github.com/Kreycin"
+  },
+  "plugins": [
+    {
+      "name": "scope",
+      "description": "Connectors only when needed, save-state-and-clear at step ends, idle and big-skill warnings.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

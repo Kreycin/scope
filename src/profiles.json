@@ -1,0 +1,147 @@
+{
+  "tokensPerTool": 30,
+  "always": [
+    "visualize"
+  ],
+  "profiles": {
+    "deploy": {
+      "connectors": [
+        "Vercel"
+      ],
+      "keywords": [
+        "vercel",
+        "deploy",
+        "deployment",
+        "ดีพลอย",
+        "ขึ้นเว็บ",
+        "ขึ้น production"
+      ]
+    },
+    "db": {
+      "connectors": [
+        "Supabase"
+      ],
+      "keywords": [
+        "supabase",
+        "database",
+        "sql",
+        "migration",
+        "postgres",
+        "rls",
+        "edge function",
+        "ฐานข้อมูล"
+      ]
+    },
+    "design": {
+      "connectors": [
+        "Canva"
+      ],
+      "keywords": [
+        "canva",
+        "poster",
+        "banner",
+        "thumbnail",
+        "โปสเตอร์",
+        "แบนเนอร์",
+        "ภาพปก",
+        "ปกคลิป"
+      ]
+    },
+    "ui": {
+      "connectors": [
+        "21st"
+      ],
+      "keywords": [
+        "21st",
+        "shadcn",
+        "ui component",
+        "landing page",
+        "hero section"
+      ]
+    },
+    "docs": {
+      "connectors": [
+        "Google Drive",
+        "Claude Docs"
+      ],
+      "keywords": [
+        "google drive",
+        "gdrive",
+        "google doc",
+        "google sheet",
+        "claude docs",
+        "ไดรฟ์"
+      ]
+    },
+    "mail": {
+      "connectors": [
+        "Gmail"
+      ],
+      "keywords": [
+        "gmail",
+        "email",
+        "inbox",
+        "อีเมล"
+      ]
+    },
+    "meeting": {
+      "connectors": [
+        "Wispr Flow"
+      ],
+      "keywords": [
+        "wispr",
+        "meeting",
+        "calendar",
+        "ประชุม",
+        "ปฏิทิน",
+        "นัดหมาย"
+      ]
+    }
+  },
+  "status": {
+    "maxChars": 6000,
+    "trustedRoots": []
+  },
+  "handoff": {
+    "min": 100000,
+    "max": 300000,
+    "regrow": 50000,
+    "jev": {
+      "enabled": "auto",
+      "threshold": 0.85,
+      "timeoutMs": 3000
+    },
+    "autoClear": {
+      "enabled": false,
+      "keepExports": 5
+    },
+    "enabled": true
+  },
+  "idleBlock": {
+    "enabled": false,
+    "minutes": 60,
+    "minTokens": 50000
+  },
+  "bigSkill": {
+    "minTokens": 20000,
+    "enabled": true
+  },
+  "pricing": {
+    "_note": "Relative to uncached input of the base model; API price ratios, not the published limit formula.",
+    "cacheRead": 0.1,
+    "cacheWrite5m": 1.25,
+    "cacheWrite1h": 2,
+    "output": 5,
+    "fastMultiplier": 6,
+    "models": {
+      "opus": 1,
+      "fable": 1,
+      "sonnet": 0.6,
+      "haiku": 0.2,
+      "other": 1
+    }
+  },
+  "connectors": {
+    "enabled": true
+  }
+}
