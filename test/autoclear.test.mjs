@@ -100,3 +100,13 @@ test('recapMessage shows the first Next items', async () => {
   assert.doesNotMatch(m, /4\. d|- x/);
   assert.doesNotMatch(recapMessage(''), /Next:/);
 });
+
+test('statusContext keeps Next when it falls past the cut', async () => {
+  const { statusContext } = await import('../src/status.mjs');
+  const { recapMessage } = await import('../src/autoclear.mjs');
+  const text = '# S\n## Done\n' + '- x\n'.repeat(100) + '## Next\n1. a\n2. b\n## End\n- z\n';
+  const s = statusContext('/p', text, 120);
+  assert.match(s, /## Next\n1\. a\n2\. b/);
+  assert.match(recapMessage(s), /Next:\n  1\. a\n  2\. b/);
+  assert.doesNotMatch(statusContext('/p', '# S\n## Next\n1. a\n' + '- x\n'.repeat(100), 60), /## Next[\s\S]*## Next/);
+});

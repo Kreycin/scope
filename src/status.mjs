@@ -22,7 +22,13 @@ export function findStatus(cwd, home = homedir()) {
 
 export function statusContext(path, text, maxChars) {
   const cut = text.length > maxChars;
-  const body = cut ? text.slice(0, maxChars) : text;
+  let body = text;
+  if (cut) {
+    // Next is what the new session acts on: when it would fall past the cut, move it to the top.
+    const next = /^## Next[^\n]*\n[\s\S]*?(?=^## |$(?![\s\S]))/m.exec(text);
+    const rest = next && next.index + next[0].length > maxChars ? text.slice(0, next.index) + text.slice(next.index + next[0].length) : text;
+    body = rest === text ? text.slice(0, maxChars) : (next[0].trimEnd() + '\n\n' + rest).slice(0, maxChars);
+  }
   return (
     `scope: project state from ${path} (read this instead of asking what was done; continue from its Next section` +
     (cut ? `; truncated at ${maxChars} chars, Read the rest only if needed` : '') +
