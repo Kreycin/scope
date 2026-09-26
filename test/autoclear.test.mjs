@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, mkdirSync, existsSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { autoClearOn, autoClearNote, markPending, takePending, pruneExports } from '../src/autoclear.mjs';
+import { autoClearOn, autoClearNote, CLEARED_TITLE, markPending, takePending, pruneExports } from '../src/autoclear.mjs';
 import { withDefaults } from '../src/config.mjs';
 import { decide } from '../src/boundary.mjs';
 import { privateStatusPath, loadPrivateStatus } from '../src/status.mjs';
@@ -25,6 +25,8 @@ test('auto clear note asks for export then clear, clear last, with fallbacks', (
   assert.ok(context.indexOf('export') < context.lastIndexOf('call the clear'));
   assert.match(context, /export failed, and to type \/clear/);
   assert.match(context, /if it is refused, tell the user to type \/clear/);
+  assert.ok(context.indexOf('set_session_title') < context.lastIndexOf('call the clear'));
+  assert.ok(context.includes(CLEARED_TITLE));
 });
 
 test('untrusted folders write a private file that is restored only after a clear', () => {
@@ -54,7 +56,8 @@ test('pending mark gives a recap once, only after a clear in the same folder', (
   markPending(dir, { cwd: '/p', now: 1000 });
   assert.equal(takePending(dir, { cwd: '/p', source: 'startup', now: 1000 + 6 * 60_000, downloads: dl }), null);
   assert.equal(takePending(dir, { cwd: '/q', source: 'clear', now: 2000, downloads: dl }), null);
-  assert.ok(takePending(dir, { cwd: '/p', source: 'clear', now: 2000, downloads: dl }).includes('recap'));
+  const recap = takePending(dir, { cwd: '/p', source: 'clear', now: 2000, downloads: dl });
+  assert.ok(recap.includes('recap') && recap.includes('set_session_title'));
   assert.equal(takePending(dir, { cwd: '/p', source: 'clear', now: 3000, downloads: dl }), null);
 });
 
@@ -92,21 +95,10 @@ test('only exports made during an auto clear are pruned, oldest to the Trash', (
   assert.ok(existsSync(join(trash, 'session-export-10.zip')));
 });
 
-test('recapMessage shows the first Next items', async () => {
-  const { recapMessage } = await import('../src/autoclear.mjs');
-  const m = recapMessage('# S\n## Next\n1. a\n2. b\n3. c\n4. d\n## Other\n- x\n');
-  assert.match(m, /chat cleared/);
-  assert.match(m, /1\. a[\s\S]*3\. c/);
-  assert.doesNotMatch(m, /4\. d|- x/);
-  assert.doesNotMatch(recapMessage(''), /Next:/);
-});
-
 test('statusContext keeps Next when it falls past the cut', async () => {
   const { statusContext } = await import('../src/status.mjs');
-  const { recapMessage } = await import('../src/autoclear.mjs');
   const text = '# S\n## Done\n' + '- x\n'.repeat(100) + '## Next\n1. a\n2. b\n## End\n- z\n';
   const s = statusContext('/p', text, 120);
   assert.match(s, /## Next\n1\. a\n2\. b/);
-  assert.match(recapMessage(s), /Next:\n  1\. a\n  2\. b/);
   assert.doesNotMatch(statusContext('/p', '# S\n## Next\n1. a\n' + '- x\n'.repeat(100), 60), /## Next[\s\S]*## Next/);
 });

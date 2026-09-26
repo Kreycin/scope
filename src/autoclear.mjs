@@ -7,6 +7,9 @@ import { homedir } from 'node:os';
 
 export const EXPORT_TOOL = 'mcp__ccd_session_mgmt__export_transcript';
 export const CLEAR_TOOL = 'mcp__ccd_session_mgmt__clear_session';
+export const TITLE_TOOL = 'mcp__ccd_session_mgmt__set_session_title';
+// The app does not show a SessionStart message on the cleared screen, so the sidebar title carries the hint.
+export const CLEARED_TITLE = 'cleared: send any message to continue';
 const PENDING = 'autoclear-pending.json';
 const EXPORTS = 'exports.json';
 const EXPORT_RE = /^session-export-\d+\.zip$/;
@@ -27,8 +30,9 @@ export function autoClearNote(contextTokens, reason, target = 'STATUS.md at the 
     `Handle the user's message first; if it continues unfinished work or you asked the user something, finish or wait and skip the rest of this note. ` +
     `Otherwise, at the end of this turn: write ${target} (Goal, Done, Decisions, Key files, Next, Open questions; under ~80 lines; ` +
     `rewrite stale lines instead of appending; keep an existing file's language and layout; put anything the user still needs from your reply into Next); ` +
-    `load ${EXPORT_TOOL} and ${CLEAR_TOOL} in one ToolSearch call (if they are missing, tell the user state is saved and to type /clear, and stop); ` +
+    `load ${EXPORT_TOOL}, ${CLEAR_TOOL} and ${TITLE_TOOL} in one ToolSearch call (if export or clear is missing, tell the user state is saved and to type /clear, and stop); ` +
     `call the export with session_id "self" (if it is refused, tell the user state is saved, the export failed, and to type /clear when ready, and stop); ` +
+    `set this session's title to "${CLEARED_TITLE}" (skip it if the title tool is missing or refused); ` +
     `tell the user in one line that state is saved, the chat was exported to Downloads, and the session is clearing; ` +
     `then call the clear with session_id "self" as your last action (if it is refused, tell the user to type /clear).`;
   return { message, context };
@@ -68,16 +72,9 @@ export function takePending(dataDir, { cwd, source, now = Date.now(), downloads 
   return (
     `scope: this session was cleared automatically after a handoff; the user no longer sees the old chat ` +
     `(an export zip is in ~/Downloads). Open your first reply with a 2-3 line recap in the user's language: ` +
-    `what was just finished and what Next says, from the saved state below.`
+    `what was just finished and what Next says, from the saved state below. ` +
+    `Then load ${TITLE_TOOL} and set a short title (3-6 words) naming the current work, replacing the "${CLEARED_TITLE}" placeholder.`
   );
-}
-
-// Visible line for the empty screen after the clear: the first Next items from STATUS.md.
-export function recapMessage(status) {
-  const m = /^## Next[^\n]*\n([\s\S]*?)(?=^## |$(?![\s\S]))/m.exec(status ?? '');
-  const items = (m?.[1] ?? '').split('\n').map((l) => l.trim()).filter((l) => /^([-*]|\d+\.)\s/.test(l)).slice(0, 3);
-  const next = items.length ? '\nNext:\n' + items.map((l) => '  ' + l.slice(0, 160)).join('\n') : '';
-  return `scope: chat cleared after a handoff (old chat saved as a zip in ~/Downloads). Send any message to continue.${next}`;
 }
 
 // Exports this flow made: zips in Downloads created between the handoff and the clear.

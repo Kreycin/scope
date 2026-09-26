@@ -15,7 +15,7 @@ import { simulateAll, formatSimulation } from '../src/simulate.mjs';
 import { windowAll, formatWindow } from '../src/window.mjs';
 import { loadState, saveState, pruneSessions, log } from '../src/store.mjs';
 import { isHeadless } from '../src/env.mjs';
-import { autoClearOn, markPending, takePending, pruneExports, recapMessage } from '../src/autoclear.mjs';
+import { autoClearOn, markPending, takePending, pruneExports } from '../src/autoclear.mjs';
 import { loadConfig, withDefaults, userConfigPath, readUserConfig, deepMerge } from '../src/config.mjs';
 import { listFeatures, setFeatures } from '../src/features.mjs';
 
@@ -176,10 +176,7 @@ async function runHook(event, config) {
     if (!s && input.cwd && input.source === 'clear') s = loadPrivateStatus(dataDir, input.cwd, config.status);
     try {
       const recap = s && input.cwd ? takePending(dataDir, { cwd: resolve(input.cwd), source: input.source }) : null;
-      if (recap) {
-        contexts.push(recap);
-        if (!message) message = recapMessage(s);
-      }
+      if (recap) contexts.push(recap);
       const moved = pruneExports(dataDir, config.handoff.autoClear.keepExports);
       if (moved.length) log(dataDir, { cmd: 'autoclear-prune', moved });
     } catch {}
