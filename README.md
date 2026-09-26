@@ -11,7 +11,7 @@ In Claude Code (CLI or the desktop app's Code tab):
 /plugin install scope@scope
 ```
 
-Then start a new session and run `/scope:setup` to choose features. Needs Node.js 20 or newer on `PATH`.
+Then start a new session and run `/scope:setup` to choose features. Needs Node.js 20 or newer on `PATH`. Step-by-step guide from zero, including JEV: [docs/getting-started.th.md](docs/getting-started.th.md) (Thai).
 
 Uninstall: `/plugin uninstall scope@scope`. Your settings stay in `~/.config/scope/`, state and logs in `~/.local/share/scope/`; delete those folders to remove everything.
 
@@ -84,6 +84,8 @@ plugin สำหรับ Claude Code ที่ลด token ซึ่งถู�
 ```
 
 แล้วเปิดเซสชันใหม่ พิมพ์ `/scope:setup` เพื่อเลือกฟีเจอร์ ต้องมี Node.js 20 ขึ้นไป
+
+ยังไม่มีอะไรเลย? อ่าน [คู่มือเริ่มต้นทีละขั้น](docs/getting-started.th.md) ตั้งแต่ติดตั้ง Claude, Node.js จนตั้งค่า JEV
 
 ถอนการติดตั้ง: `/plugin uninstall scope@scope` ค่าที่ตั้งไว้อยู่ใน `~/.config/scope/` สถานะและ log อยู่ใน `~/.local/share/scope/` ลบสองโฟลเดอร์นี้ถ้าต้องการล้างหมด
 
