@@ -9,7 +9,7 @@
 // smaller context than the last note means the session was cleared, so the gate resets.
 import { scanTimeline } from './simulate.mjs';
 import { systemOne } from './jev.mjs';
-import { autoClearNote } from './autoclear.mjs';
+import { autoClearNote, BACKGROUND_CLAUSE, stalledExport, resumeClearNote } from './autoclear.mjs';
 
 const clip = (s, n) => (s && s.length > n ? `${s.slice(0, n)}…` : s ?? '');
 
@@ -82,7 +82,10 @@ export function handoffNote(contextTokens, reason, restorable = true, target = '
   const message = `scope: context ${k}k tokens and a step looks finished (${reason}). After Claude saves its state, type /clear to continue from it.`;
   const context =
     `scope: context is ${k}k tokens and every request re-reads it; a step looks finished (${reason}). ` +
-    `Handle the user's message first; if it continues unfinished work, finish that step before handing off. ` +
+    (reason === 'size'
+      ? `Handle the user's message, but do not skip this handoff: finish only the edit or command in hand; unfinished steps and open questions go into Next. `
+      : `Handle the user's message first; if it continues unfinished work in this session, finish that step before handing off. `) +
+    BACKGROUND_CLAUSE +
     `Then write ${target} (Goal, Done, Decisions, Key files, Next, Open questions; under ~80 lines; ` +
     `rewrite stale lines instead of appending; keep an existing file's language and layout) ` +
     `and tell the user in one line that state is saved and they can type /clear to continue from it.`;
@@ -91,6 +94,12 @@ export function handoffNote(contextTokens, reason, restorable = true, target = '
 
 // Full decision for one prompt. Never throws: JEV failures mean no note.
 export async function decide({ sessionId, contextTokens, lines, prompt, now, restorable = true, autoClear = false, target }, state, config, deps = {}) {
+  // A handoff turn that exported but never cleared: ask for the clear once per export.
+  const stalled = autoClear ? stalledExport(lines) : null;
+  if (stalled && state.stalledClear?.[sessionId] !== stalled) {
+    state.stalledClear = { ...Object.fromEntries(Object.entries(state.stalledClear ?? {}).slice(-49)), [sessionId]: stalled };
+    return { note: resumeClearNote(contextTokens), autoClear: true, state, log: { gate: 'stalled-clear', export_at: stalled } };
+  }
   const cur = currentPrompt(lines, prompt, now);
   const g = gate({ sessionId, contextTokens, signals: cur.signals }, state, config);
   let reason = g.reason;

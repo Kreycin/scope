@@ -22,13 +22,25 @@ export function autoClearOn(config, { headless, env = process.env }) {
   return !!config.handoff.autoClear?.enabled && !headless && env.CLAUDE_CODE_ENTRYPOINT === 'claude-desktop';
 }
 
+// Orchestrating sessions always have workers running elsewhere; without this they never count as finished.
+export const BACKGROUND_CLAUSE =
+  `Work that runs on its own (background workers or CLIs in other worktrees, VM jobs, subagents) is not unfinished work: ` +
+  `list each one in Next with where it runs, its branch or log, and how to check it, so the next session picks it up. `;
+
 export function autoClearNote(contextTokens, reason, target = 'STATUS.md at the repo root') {
   const k = Math.round(contextTokens / 1000);
-  const message = `scope: context ${k}k tokens and a step looks finished (${reason}). Claude will save its state, export this chat to ~/Downloads, then clear.`;
+  const size = reason === 'size';
+  const message = size
+    ? `scope: context ${k}k tokens, over the limit. Claude will save its state, export this chat to ~/Downloads, then clear.`
+    : `scope: context ${k}k tokens and a step looks finished (${reason}). Claude will save its state, export this chat to ~/Downloads, then clear.`;
   const context =
-    `scope: context is ${k}k tokens and every request re-reads it; a step looks finished (${reason}). ` +
-    `Handle the user's message first; if it continues unfinished work or you asked the user something, finish or wait and skip the rest of this note. ` +
-    `Otherwise, at the end of this turn: write ${target} (Goal, Done, Decisions, Key files, Next, Open questions; under ~80 lines; ` +
+    (size
+      ? `scope: context is ${k}k tokens, over the handoff limit, and every request re-reads it. ` +
+        `Handle the user's message, but do not skip this handoff: finish only the edit or command in hand; unfinished steps, open questions and running work go into Next. `
+      : `scope: context is ${k}k tokens and every request re-reads it; a step looks finished (${reason}). ` +
+        `Handle the user's message first; if it continues unfinished work in this session or you asked the user something, finish or wait and skip the rest of this note. `) +
+    BACKGROUND_CLAUSE +
+    `At the end of this turn: write ${target} (Goal, Done, Decisions, Key files, Next, Open questions; under ~80 lines; ` +
     `rewrite stale lines instead of appending; keep an existing file's language and layout; put anything the user still needs from your reply into Next); ` +
     `load ${EXPORT_TOOL}, ${CLEAR_TOOL} and ${TITLE_TOOL} in one ToolSearch call (if export or clear is missing, tell the user state is saved and to type /clear, and stop); ` +
     `call the export with session_id "self" (if it is refused, tell the user state is saved, the export failed, and to type /clear when ready, and stop); ` +
@@ -36,6 +48,35 @@ export function autoClearNote(contextTokens, reason, target = 'STATUS.md at the 
     `tell the user in one line that state is saved, the chat was exported to Downloads, and the session is clearing; ` +
     `then call the clear with session_id "self" as your last action (if it is refused, tell the user to type /clear).`;
   return { message, context };
+}
+
+// Timestamp of a handoff export (export plus the cleared title) that no clear followed
+// (a new user message cut the handoff turn short), else null. A plain export the user asked for does not count.
+export function stalledExport(lines) {
+  let at = null;
+  let titled = false;
+  for (const l of lines) {
+    if (!l.includes('"tool_use"')) continue;
+    if (l.includes(`"name":"${CLEAR_TOOL}"`)) at = null;
+    else if (l.includes(`"name":"${EXPORT_TOOL}"`)) {
+      at = l.match(/"timestamp":"([^"]+)"/)?.[1] ?? 'unknown';
+      titled = false;
+    }
+    if (l.includes(`"name":"${TITLE_TOOL}"`)) titled = l.includes(CLEARED_TITLE);
+  }
+  return at && titled ? at : null;
+}
+
+export function resumeClearNote(contextTokens) {
+  const k = Math.round(contextTokens / 1000);
+  return {
+    message: `scope: this chat was exported for a clear that did not run. Claude will clear after this reply.`,
+    context:
+      `scope: this chat was saved and exported for a clear, but a new message arrived before the clear ran (context ${k}k tokens). ` +
+      `Handle the user's message; if it changes state, update Next in the saved file. ` +
+      `Then load ${CLEAR_TOOL} via ToolSearch and call it with session_id "self" as your last action ` +
+      `(if it is missing or refused, set a real title with ${TITLE_TOOL} in place of "${CLEARED_TITLE}" and tell the user to type /clear).`,
+  };
 }
 
 function readJson(path, fallback) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, mkdirSync, existsSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { autoClearOn, autoClearNote, CLEARED_TITLE, markPending, takePending, pruneExports } from '../src/autoclear.mjs';
+import { autoClearOn, autoClearNote, CLEARED_TITLE, markPending, takePending, pruneExports, stalledExport } from '../src/autoclear.mjs';
 import { withDefaults } from '../src/config.mjs';
 import { decide } from '../src/boundary.mjs';
 import { privateStatusPath, loadPrivateStatus } from '../src/status.mjs';
@@ -102,4 +102,32 @@ test('statusContext keeps Next when it falls past the cut', async () => {
   const s = statusContext('/p', text, 120);
   assert.match(s, /## Next\n1\. a\n2\. b/);
   assert.doesNotMatch(statusContext('/p', '# S\n## Next\n1. a\n' + '- x\n'.repeat(100), 60), /## Next[\s\S]*## Next/);
+});
+
+test('background work never counts as unfinished; over the limit the handoff cannot be skipped', () => {
+  const signal = autoClearNote(150000, 'commit').context;
+  assert.match(signal, /background workers/);
+  assert.match(signal, /skip the rest of this note/);
+  const size = autoClearNote(320000, 'size').context;
+  assert.match(size, /do not skip this handoff/);
+  assert.doesNotMatch(size, /skip the rest of this note/);
+  assert.match(size, /background workers/);
+});
+
+test('an export with no clear after it asks for the clear once', async () => {
+  const cfg = withDefaults({});
+  const use = (name, ts, input = {}) => JSON.stringify({ type: 'assistant', timestamp: ts, message: { content: [{ type: 'tool_use', name, input }] } });
+  const exported = [use('mcp__ccd_session_mgmt__export_transcript', '2026-09-27T14:26:09Z')];
+  assert.equal(stalledExport(exported), null, 'an export the user asked for is not a handoff');
+  const lines = [...exported, use('mcp__ccd_session_mgmt__set_session_title', '2026-09-27T14:26:10Z', { title: CLEARED_TITLE })];
+  assert.equal(stalledExport(lines), '2026-09-27T14:26:09Z');
+  assert.equal(stalledExport([...lines, use('mcp__ccd_session_mgmt__clear_session', '2026-09-27T14:26:12Z')]), null);
+  const state = {};
+  const d1 = await decide({ sessionId: 's', contextTokens: 120000, lines, prompt: 'x', autoClear: true }, state, cfg);
+  assert.equal(d1.log.gate, 'stalled-clear');
+  assert.ok(d1.note.context.includes('clear_session'));
+  const d2 = await decide({ sessionId: 's', contextTokens: 120000, lines, prompt: 'x', autoClear: true }, d1.state, cfg);
+  assert.notEqual(d2.log?.gate, 'stalled-clear');
+  const off = await decide({ sessionId: 't', contextTokens: 120000, lines, prompt: 'x', autoClear: false }, {}, cfg);
+  assert.notEqual(off.log?.gate, 'stalled-clear');
 });
