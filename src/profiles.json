@@ -126,6 +126,10 @@
     "minTokens": 20000,
     "enabled": true
   },
+  "readGuard": {
+    "enabled": true,
+    "maxLines": 600
+  },
   "pricing": {
     "_note": "Relative to uncached input of the base model; API price ratios, not the published limit formula.",
     "cacheRead": 0.1,

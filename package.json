@@ -1,6 +1,6 @@
 {
   "name": "scope",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "license": "MIT",
   "description": "Cut the tokens Claude Code re-sends on every request.",

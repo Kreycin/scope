@@ -7,6 +7,7 @@ export const FEATURES = {
   autoClear: { path: ['handoff', 'autoClear', 'enabled'], values: ['on', 'off'], th: 'แอป desktop: เซฟสถานะ export แชตไป Downloads แล้ว clear ให้อัตโนมัติ', en: 'Desktop app: save state, export the chat to Downloads, then clear automatically' },
   idleBlock: { path: ['idleBlock', 'enabled'], values: ['on', 'off'], th: 'ห่างไป 60 นาทีแล้ว context ใหญ่: กันข้อความแรกไว้ครั้งเดียวให้เลือก /clear ก่อน', en: 'After 60 min idle on a big context, hold the first prompt once so you can /clear first' },
   bigSkill: { path: ['bigSkill', 'enabled'], values: ['on', 'off'], th: 'skill ใหญ่ (>=20k tokens) โหลดเข้ามา: เตือนให้ /clear หลังงานนั้นเสร็จ', en: 'When a skill of 20k+ tokens loads, suggest /clear after its task' },
+  readGuard: { path: ['readGuard', 'enabled'], values: ['on', 'off'], th: 'อ่านไฟล์ยาว (>600 บรรทัด) ทั้งไฟล์: ห้ามครั้งแรก ให้อ่านเฉพาะส่วนที่ต้องใช้ ส่งซ้ำเพื่ออ่านทั้งไฟล์', en: 'First full Read of a 600+ line file is held back with a hint to read only the part needed; the same Read again goes through' },
   jev: { path: ['handoff', 'jev', 'enabled'], values: ['auto', 'on', 'off'], th: 'ใช้ JEV (TypeSafe) ช่วยตัดสินว่างานจบขั้นหรือยัง; auto = เปิดเมื่อมี TYPESAFE_API_KEY', en: 'Ask JEV (TypeSafe) whether a step finished; auto = on when TYPESAFE_API_KEY is set' },
 };
 

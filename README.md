@@ -24,6 +24,7 @@ Uninstall: `/plugin uninstall scope@scope`. Your settings stay in `~/.config/sco
 | `autoClear` | off | Desktop app only: at a handoff Claude saves state, exports the chat to `~/Downloads`, and clears the session itself. The new session opens with a short recap. Exports it made beyond the newest 5 go to the Trash. |
 | `idleBlock` | off | After 60 minutes idle on a context of 50k+, holds your first message once (the cache has expired, so the next request costs about twice as much). Send it again to go through, or `/clear` first. |
 | `bigSkill` | on | When a skill of 20k+ tokens loads, suggests `/clear` after its task. |
+| `readGuard` | on | Holds back the first full `Read` of a file over 600 lines and asks Claude to read only the part it needs (`offset`/`limit`). The same Read sent again goes through. |
 | `jev` | auto | Asks JEV (TypeSafe) whether a step finished when no clear signal exists. `auto` = on only when `TYPESAFE_API_KEY` is set. |
 
 Change them with `/scope:setup`, or `scope features set autoClear=on idleBlock=off`. `SCOPE_OFF=1` turns every hook off.
@@ -98,6 +99,7 @@ plugin สำหรับ Claude Code ที่ลด token ซึ่งถู�
 | `autoClear` | ปิด | เฉพาะแอป desktop: Claude เซฟสถานะ export แชตไป `~/Downloads` แล้ว clear เอง เซสชันใหม่เปิดด้วยสรุปสั้นๆ ไฟล์ export ที่เกิน 5 อันล่าสุดย้ายไปถังขยะ |
 | `idleBlock` | ปิด | ห่างไป 60 นาทีและ context เกิน 50k: กันข้อความแรกไว้ครั้งเดียว (cache หมดอายุ ครั้งถัดไปแพงราว 2 เท่า) ส่งซ้ำเพื่อไปต่อ หรือ `/clear` ก่อน |
 | `bigSkill` | เปิด | skill ขนาดเกิน 20k token ถูกโหลด: แนะนำให้ `/clear` หลังงานนั้นเสร็จ |
+| `readGuard` | เปิด | `Read` ไฟล์ยาวเกิน 600 บรรทัดทั้งไฟล์: กันครั้งแรกไว้ ให้ Claude อ่านเฉพาะส่วนที่ต้องใช้ (`offset`/`limit`) ส่ง Read เดิมซ้ำจะผ่าน |
 | `jev` | auto | ถาม JEV (TypeSafe) ว่างานจบขั้นหรือยังเมื่อไม่มีสัญญาณชัด `auto` = เปิดเมื่อมี `TYPESAFE_API_KEY` |
 
 เปลี่ยนได้ด้วย `/scope:setup` หรือ `scope features set autoClear=on` ปิดทุกอย่างด้วย `SCOPE_OFF=1`

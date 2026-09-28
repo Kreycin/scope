@@ -97,7 +97,7 @@ export async function decide({ sessionId, contextTokens, lines, prompt, now, res
   // A handoff turn that exported but never cleared: ask for the clear once per export.
   const stalled = autoClear ? stalledExport(lines) : null;
   if (stalled && state.stalledClear?.[sessionId] !== stalled) {
-    state.stalledClear = { ...Object.fromEntries(Object.entries(state.stalledClear ?? {}).slice(-49)), [sessionId]: stalled };
+    state.stalledClear = { ...state.stalledClear, [sessionId]: stalled };
     return { note: resumeClearNote(contextTokens), autoClear: true, state, log: { gate: 'stalled-clear', export_at: stalled } };
   }
   const cur = currentPrompt(lines, prompt, now);

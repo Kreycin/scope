@@ -55,6 +55,8 @@ export function loadState(dataDir, sessionId) {
     if (sess.handoff !== undefined) state.handoff = { [sessionId]: sess.handoff };
     if (sess.idleBlock !== undefined) state.idleBlock = { [sessionId]: sess.idleBlock };
     if (sess.skillScan !== undefined) state.skillScan = { [sessionId]: sess.skillScan };
+    if (sess.stalledClear !== undefined) state.stalledClear = { [sessionId]: sess.stalledClear };
+    if (sess.readGuard !== undefined) state.readGuard = { [sessionId]: sess.readGuard };
   }
   return state;
 }
@@ -72,6 +74,10 @@ export function saveState(dataDir, sessionId, state, loaded = []) {
   if (idleBlock !== undefined) slice.idleBlock = idleBlock;
   const skillScan = state.skillScan?.[sessionId];
   if (skillScan !== undefined) slice.skillScan = skillScan;
+  const stalledClear = state.stalledClear?.[sessionId];
+  if (stalledClear !== undefined) slice.stalledClear = stalledClear;
+  const readGuard = state.readGuard?.[sessionId];
+  if (readGuard !== undefined) slice.readGuard = readGuard;
   atomicWrite(join(dataDir, 'sessions', `${fid}.json`), JSON.stringify(slice));
 
   const leftOn = state.leftOn ?? [];

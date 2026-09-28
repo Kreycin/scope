@@ -14,6 +14,7 @@ export const DEFAULTS = {
   handoff: { enabled: true, min: 100000, max: 300000, regrow: 50000, jev: { enabled: false, threshold: 0.85, timeoutMs: 3000 }, autoClear: { enabled: false, keepExports: 5 } },
   idleBlock: { enabled: false, minutes: 60, minTokens: 50000 },
   bigSkill: { enabled: true, minTokens: 20000 },
+  readGuard: { enabled: true, maxLines: 600 },
 };
 
 export function withDefaults(raw) {
@@ -31,6 +32,7 @@ export function withDefaults(raw) {
     },
     idleBlock: { ...DEFAULTS.idleBlock, ...r.idleBlock },
     bigSkill: { ...DEFAULTS.bigSkill, ...r.bigSkill },
+    readGuard: { ...DEFAULTS.readGuard, ...r.readGuard },
   };
 }
 

@@ -14,6 +14,7 @@ import { loadStatusContext, isTrusted, privateStatusPath, loadPrivateStatus } fr
 import { simulateAll, formatSimulation } from '../src/simulate.mjs';
 import { windowAll, formatWindow } from '../src/window.mjs';
 import { loadState, saveState, pruneSessions, log } from '../src/store.mjs';
+import { readGuard } from '../src/readguard.mjs';
 import { isHeadless } from '../src/env.mjs';
 import { autoClearOn, markPending, takePending, pruneExports } from '../src/autoclear.mjs';
 import { loadConfig, withDefaults, userConfigPath, readUserConfig, deepMerge } from '../src/config.mjs';
@@ -44,8 +45,8 @@ const USAGE = `scope — keep only the connectors a task needs
       Show each feature switch and its current value.
   scope features set <name>=<value> ...
       Change switches in the user config (for example autoClear=on idleBlock=off).
-  scope hook-prompt | hook-start
-      Claude Code hooks (UserPromptSubmit / SessionStart); read hook JSON on stdin.
+  scope hook-prompt | hook-start | hook-pre-read
+      Claude Code hooks (UserPromptSubmit / SessionStart / PreToolUse Read); read hook JSON on stdin.
 
 --status takes the JSON printed by session_connectors_status.
 Config: ${configPath}
@@ -207,6 +208,21 @@ async function main() {
   const [cmd, ...rest] = args._;
   if (!cmd || args.help) {
     console.log(USAGE);
+    return;
+  }
+  if (cmd === 'hook-pre-read') {
+    if (process.env.SCOPE_OFF === '1') return;
+    try {
+      const config = loadConfig(configPath, userPath);
+      if (!config.readGuard.enabled) return;
+      const input = JSON.parse(readFileSync(0, 'utf8') || '{}');
+      const state = loadState(dataDir, input.session_id);
+      const r = readGuard({ sessionId: input.session_id, toolInput: input.tool_input }, state, config);
+      saveState(dataDir, input.session_id, state, [...state.leftOn]);
+      if (!r) return;
+      log(dataDir, { cmd: 'read-guard', session: input.session_id, path: input.tool_input?.file_path, lines: r.lines });
+      console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: r.deny } }));
+    } catch {}
     return;
   }
   if (cmd === 'hook-prompt' || cmd === 'hook-start') {
