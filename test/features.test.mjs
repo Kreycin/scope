@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadConfig, deepMerge } from '../src/config.mjs';
 import { setFeatures } from '../src/features.mjs';
 
-const shipped = new URL('../src/profiles.json', import.meta.url).pathname;
+const shipped = fileURLToPath(new URL('../src/profiles.json', import.meta.url));
 const tmp = () => mkdtempSync(join(tmpdir(), 'scope-feat-'));
 
 test('shipped defaults are safe for a new user', () => {
