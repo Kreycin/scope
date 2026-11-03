@@ -106,6 +106,10 @@
     "min": 100000,
     "max": 300000,
     "regrow": 50000,
+    "fresh": {
+      "turns": 2,
+      "minutes": 30
+    },
     "jev": {
       "enabled": "auto",
       "threshold": 0.85,

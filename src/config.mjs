@@ -11,7 +11,7 @@ export const DEFAULTS = {
   profiles: {},
   connectors: { enabled: true },
   status: { maxChars: 6000, trustedRoots: [] },
-  handoff: { enabled: true, min: 100000, max: 300000, regrow: 50000, jev: { enabled: false, threshold: 0.85, timeoutMs: 3000 }, autoClear: { enabled: false, keepExports: 5 } },
+  handoff: { enabled: true, min: 100000, max: 300000, regrow: 50000, fresh: { turns: 2, minutes: 30 }, jev: { enabled: false, threshold: 0.85, timeoutMs: 3000 }, autoClear: { enabled: false, keepExports: 5 } },
   idleBlock: { enabled: false, minutes: 60, minTokens: 50000 },
   bigSkill: { enabled: true, minTokens: 20000 },
   readGuard: { enabled: true, maxLines: 600 },
@@ -27,6 +27,7 @@ export function withDefaults(raw) {
     handoff: {
       ...DEFAULTS.handoff,
       ...r.handoff,
+      fresh: { ...DEFAULTS.handoff.fresh, ...r.handoff?.fresh },
       jev: { ...DEFAULTS.handoff.jev, ...r.handoff?.jev },
       autoClear: { ...DEFAULTS.handoff.autoClear, ...r.handoff?.autoClear },
     },

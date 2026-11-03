@@ -10,7 +10,7 @@ Every enabled connector adds its tool names to every request (Vercel alone is ~2
 ## Automatic (hooks)
 
 - `UserPromptSubmit` runs `scope hook-prompt`. Silent unless the prompt names a connector-backed task (e.g. "deploy to vercel"); then a `scope:` note asks you to enable that connector. Enable it only if the task really needs it, say it arrives next turn, stop.
-- At a prompt with context >= 100k, if a step just finished (commit, tests pass, STATUS.md edit, "โอเค/ok", new-topic words, 30 min idle; or, with no such signal, a JEV Noul p >= 0.75 on "did a step finish?"), or context >= 300k regardless, a `scope:` note asks you to update the repo's `STATUS.md` after handling the message and tell the user they can `/clear`. The user clears.
+- At a prompt with context >= 100k, if a step just finished (commit, tests pass, STATUS.md edit, "โอเค/ok", new-topic words, 30 min idle; or, with no such signal, a JEV Noul p >= 0.75 on "did a step finish?"), or context >= 300k regardless, a `scope:` note asks you to save state after handling the message and tell the user, in the same reply, that they can `/clear`. The user clears. Do exactly what the note says and nothing more: if it says the file is already current, do not rewrite, Read or check it; if it gives a `status-next` command, pipe only the new Next section into it (no Read before or after); if the file is missing, Write it once. Send the save in parallel with your last other tool call of the turn. Never spend a separate turn confirming the save.
 - `SessionStart` runs `scope hook-start`. On startup, `/clear` and compaction it adds the project's `STATUS.md` (only under `status.trustedRoots`, empty by default, capped at `status.maxChars`; elsewhere a private handoff file under `~/.local/share/scope/handoff/` is restored after a clear); continue from its Next section. If an earlier task left connectors on, it asks you to disable them unless the first message needs them.
 - In the Claude desktop app with `autoClear` on, the note instead asks you to save state, export the chat, then clear the session yourself; the next session opens with a short recap.
 - Each feature can be switched off: `/scope:setup`, or `scope features set <name>=on|off`. Kill switch for everything: `SCOPE_OFF=1`.
@@ -23,6 +23,7 @@ To toggle: load `mcp__ccd_connectors__set_session_connector_enabled` via ToolSea
 - `scope audit [--days 7]`: per-session requests, baseline (fixed context) and peak context from transcripts.
 - `scope profiles`: list profiles.
 - `scope features [set name=value ...]`: show or change feature switches.
+- `scope status-next <file>`: replace the Next section of a `STATUS.md` or private handoff file with stdin.
 
 Run the CLI as `node "${CLAUDE_PLUGIN_ROOT}/bin/scope.mjs" <command>`. Shipped defaults live in the plugin's `src/profiles.json`; the user's overrides (their own profiles, `status.trustedRoots`, thresholds) go in `~/.config/scope/config.json`, which is merged on top and survives plugin updates. Never edit the plugin copy.
 

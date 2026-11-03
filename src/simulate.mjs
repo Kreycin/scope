@@ -16,7 +16,7 @@ const DONE_START = /^\s*(โอเค|ok\b|okay|เยี่ยม|ดีมา�
 const NEW_TOPIC = /เรื่องใหม่|งานใหม่|ทีนี้เรา|ต่อไปเรา|เรื่องต่อไป|อีกเรื่อง|next task|new task/i;
 const GAP_MS = 30 * 60 * 1000;
 
-function userText(row) {
+export function userText(row) {
   if (row.isMeta || row.isCompactSummary) return null;
   const c = row.message?.content;
   let text = null;

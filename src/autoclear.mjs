@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, writeFileSync, readdirSync, statSync, renameSync, mkdirSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { homedir } from 'node:os';
+import { saveClause } from './status.mjs';
 
 export const EXPORT_TOOL = 'mcp__ccd_session_mgmt__export_transcript';
 export const CLEAR_TOOL = 'mcp__ccd_session_mgmt__clear_session';
@@ -27,7 +28,7 @@ export const BACKGROUND_CLAUSE =
   `Work that runs on its own (background workers or CLIs in other worktrees, VM jobs, subagents) is not unfinished work: ` +
   `list each one in Next with where it runs, its branch or log, and how to check it, so the next session picks it up. `;
 
-export function autoClearNote(contextTokens, reason, target = 'STATUS.md at the repo root') {
+export function autoClearNote(contextTokens, reason, target = 'STATUS.md at the repo root', save = {}) {
   const k = Math.round(contextTokens / 1000);
   const size = reason === 'size';
   const message = size
@@ -40,8 +41,7 @@ export function autoClearNote(contextTokens, reason, target = 'STATUS.md at the 
       : `scope: context is ${k}k tokens and every request re-reads it; a step looks finished (${reason}). ` +
         `Handle the user's message first; if it continues unfinished work in this session or you asked the user something, finish or wait and skip the rest of this note. `) +
     BACKGROUND_CLAUSE +
-    `At the end of this turn: write ${target} (Goal, Done, Decisions, Key files, Next, Open questions; under ~80 lines; ` +
-    `rewrite stale lines instead of appending; keep an existing file's language and layout; put anything the user still needs from your reply into Next); ` +
+    `At the end of this turn: ${saveClause(target, save, ` Send that call in parallel with the ToolSearch call below.`)} Put anything the user still needs from your reply into Next. Then ` +
     `load ${EXPORT_TOOL}, ${CLEAR_TOOL} and ${TITLE_TOOL} in one ToolSearch call (if export or clear is missing, tell the user state is saved and to type /clear, and stop); ` +
     `call the export with session_id "self" (if it is refused, tell the user state is saved, the export failed, and to type /clear when ready, and stop); ` +
     `set this session's title to "${CLEARED_TITLE}" (skip it if the title tool is missing or refused); ` +

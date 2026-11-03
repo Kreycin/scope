@@ -40,6 +40,8 @@ To use repo `STATUS.md` files for your own projects, add their parent folder in 
 { "status": { "trustedRoots": ["~/code"] } }
 ```
 
+A handoff never asks Claude to rewrite state it just saved. If this session wrote the state file within the last `handoff.fresh.turns` prompts (default 2) and the file changed within `handoff.fresh.minutes` (default 30), the note only says you can `/clear` now. Otherwise Claude replaces just the Next section in one call (`scope status-next <file>` reads it from stdin, so no Read first), or writes a missing file once, sent alongside its last tool call of the turn; no read-back and no separate confirmation turn. `{ "handoff": { "fresh": { "turns": 0 } } }` turns the freshness check off.
+
 ## Config
 
 Shipped defaults: `src/profiles.json` in the plugin (replaced on update). Your overrides: `~/.config/scope/config.json`, merged on top (objects key by key, lists replace). Add your own connector profiles there:
@@ -108,5 +110,7 @@ plugin สำหรับ Claude Code ที่ลด token ซึ่งถู�
 
 - โปรเจกต์ใต้โฟลเดอร์ใน `status.trustedRoots` เก็บใน `STATUS.md` ที่ root ของ repo ค่าเริ่มต้นว่าง เพื่อไม่ให้ `STATUS.md` ของ repo ที่ clone มาสั่ง Claude ได้
 - ที่อื่นเก็บในไฟล์ส่วนตัวใต้ `~/.local/share/scope/handoff/` คืนให้เฉพาะหลัง clear ในโฟลเดอร์เดิมภายใน 24 ชั่วโมง
+
+ตอน handoff ถ้าเซสชันนี้เพิ่งเขียนไฟล์สถานะภายใน `handoff.fresh.turns` ข้อความ (ค่าเริ่มต้น 2) และไฟล์เปลี่ยนภายใน `handoff.fresh.minutes` นาที (ค่าเริ่มต้น 30) scope จะบอกแค่ว่าพิมพ์ `/clear` ได้เลย ไม่สั่งเขียนซ้ำ ถ้าไฟล์เก่า Claude แทนที่เฉพาะส่วน Next ในคำสั่งเดียว (`scope status-next <file>` ไม่ต้อง Read ก่อน) ส่งพร้อม tool call สุดท้ายของเทิร์น ไม่อ่านกลับ ไม่มีรอบยืนยันแยก
 
 ตั้งค่าเองใน `~/.config/scope/config.json` (ทับค่าเริ่มต้นของ plugin และไม่หายตอนอัปเดต) ตัวอย่างอยู่ในส่วนภาษาอังกฤษด้านบน

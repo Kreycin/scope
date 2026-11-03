@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync, openSync, readSync, fstatSync, closeSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, openSync, readSync, fstatSync, closeSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +10,7 @@ import { findBigSkills, readNewLines, bigSkillNote } from '../src/bigskill.mjs';
 import { idleCheck } from '../src/idle.mjs';
 import { audit, formatAudit, lastContextTokens } from '../src/audit.mjs';
 import { breakdownAll, formatBreakdown } from '../src/breakdown.mjs';
-import { loadStatusContext, isTrusted, privateStatusPath, loadPrivateStatus } from '../src/status.mjs';
+import { loadStatusContext, isTrusted, privateStatusPath, loadPrivateStatus, findStatus, statusFreshness, replaceNext, STATUS_FILE } from '../src/status.mjs';
 import { simulateAll, formatSimulation } from '../src/simulate.mjs';
 import { windowAll, formatWindow } from '../src/window.mjs';
 import { loadState, saveState, pruneSessions, log } from '../src/store.mjs';
@@ -45,6 +45,8 @@ const USAGE = `scope — keep only the connectors a task needs
       Show each feature switch and its current value.
   scope features set <name>=<value> ...
       Change switches in the user config (for example autoClear=on idleBlock=off).
+  scope status-next <file>
+      Replace the Next section of a STATUS.md (or private handoff file) with stdin.
   scope hook-prompt | hook-start | hook-pre-read
       Claude Code hooks (UserPromptSubmit / SessionStart / PreToolUse Read); read hook JSON on stdin.
 
@@ -145,8 +147,11 @@ async function runHook(event, config) {
           : input.cwd
             ? `${privateStatusPath(dataDir, input.cwd)} (private handoff file; create its folder if missing)`
             : null;
+        // A file this session saved a moment ago needs no rewrite; a stale one gets only its Next replaced.
+        const statusPath = !target ? null : restorable ? findStatus(input.cwd) : privateStatusPath(dataDir, input.cwd);
+        const save = statusPath ? { ...statusFreshness(lines, statusPath, config.handoff.fresh), path: statusPath, cli: fileURLToPath(import.meta.url) } : {};
         const d = !config.handoff.enabled ? { state, log: null } : await decide(
-          { sessionId: input.session_id, contextTokens, lines, prompt: input.prompt, restorable: !!target, target: target ?? undefined, autoClear: !!target && autoClearOn(config, { headless }) },
+          { sessionId: input.session_id, contextTokens, lines, prompt: input.prompt, restorable: !!target, target: target ?? undefined, autoClear: !!target && autoClearOn(config, { headless }), save },
           state,
           jevConfig,
         );
@@ -236,6 +241,20 @@ async function main() {
     try {
       await runHook(cmd === 'hook-prompt' ? 'UserPromptSubmit' : 'SessionStart', config);
     } catch {}
+    return;
+  }
+
+  // Handoff saves: Claude pipes the new Next section here instead of Reading the file to Edit it.
+  if (cmd === 'status-next') {
+    const file = rest[0] ? resolve(rest[0]) : null;
+    if (!file || (!file.endsWith('/' + STATUS_FILE) && !file.startsWith(join(dataDir, 'handoff') + '/'))) {
+      throw new Error('status-next needs a STATUS.md or private handoff file path');
+    }
+    const body = readFileSync(0, 'utf8');
+    if (!body.trim()) throw new Error('status-next got an empty Next section on stdin');
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, replaceNext(existsSync(file) ? readFileSync(file, 'utf8') : '', body));
+    console.log(`saved Next in ${file}`);
     return;
   }
 
