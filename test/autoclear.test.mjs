@@ -101,7 +101,11 @@ test('statusContext keeps Next when it falls past the cut', async () => {
   const text = '# S\n## Done\n' + '- x\n'.repeat(100) + '## Next\n1. a\n2. b\n## End\n- z\n';
   const s = statusContext('/p', text, 120);
   assert.match(s, /## Next\n1\. a\n2\. b/);
+  assert.match(s, /Next is shown first here but comes after the other sections in the file/);
   assert.doesNotMatch(statusContext('/p', '# S\n## Next\n1. a\n' + '- x\n'.repeat(100), 60), /## Next[\s\S]*## Next/);
+  const inPlace = statusContext('/p', '# S\n## Next\n1. a\n## End\n' + '- x\n'.repeat(100), 60);
+  assert.match(inPlace, /^[^\n]*\):\n\n# S\n## Next\n1\. a/);
+  assert.doesNotMatch(inPlace, /shown first here/);
 });
 
 test('background work never counts as unfinished; over the limit the handoff cannot be skipped', () => {

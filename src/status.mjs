@@ -24,15 +24,20 @@ export function findStatus(cwd, home = homedir()) {
 export function statusContext(path, text, maxChars) {
   const cut = text.length > maxChars;
   let body = text;
+  let moved = false;
   if (cut) {
     // Next is what the new session acts on: when it would fall past the cut, move it to the top.
     const next = /^## Next[^\n]*\n[\s\S]*?(?=^## |$(?![\s\S]))/m.exec(text);
     const rest = next && next.index + next[0].length > maxChars ? text.slice(0, next.index) + text.slice(next.index + next[0].length) : text;
-    body = rest === text ? text.slice(0, maxChars) : (next[0].trimEnd() + '\n\n' + rest).slice(0, maxChars);
+    moved = rest !== text;
+    body = moved ? (next[0].trimEnd() + '\n\n' + rest).slice(0, maxChars) : text.slice(0, maxChars);
   }
+  // Say when Next was moved: a session that took this order for the file's own once sliced
+  // from '## Next' to '# STATUS', got an empty string and shredded the file (2026-11-06).
   return (
     `scope: project state from ${path} (read this instead of asking what was done; continue from its Next section` +
     (cut ? `; truncated at ${maxChars} chars, Read the rest only if needed` : '') +
+    (moved ? '; Next is shown first here but comes after the other sections in the file' : '') +
     `):\n\n${body}`
   );
 }
@@ -107,14 +112,25 @@ export function statusFreshness(lines, path, { turns, minutes }, now = Date.now(
   return { exists: true, fresh: since != null && since < turns && now - mtime <= minutes * 60000, since };
 }
 
-// Replace the body of the `## Next` section (appended when missing); other sections stay as they are.
+// Replace the `## Next` section (appended when missing); other sections stay as they are.
+// Every further `## Next` section is dropped, so saving twice never grows the file and a file
+// that already holds copies heals on the next save (2026-11-06: an ad-hoc `str.replace('', next)`
+// left a Sandbox STATUS.md with 6,865 Next copies, 6.8 MB, and each save fixed only the first one).
 export function replaceNext(text, body) {
   const next = `## Next\n${body.trim()}\n`;
   if (!text.trim()) return `# STATUS\n\n${next}`;
-  const m = /^## Next[^\n]*\n[\s\S]*?(?=^## |$(?![\s\S]))/m.exec(text);
-  if (!m) return `${text.trimEnd()}\n\n${next}`;
-  const after = text.slice(m.index + m[0].length);
-  return text.slice(0, m.index) + next + (after ? '\n' + after : '');
+  const out = [];
+  let at = -1;
+  for (const part of text.split(/^(?=## )/m)) {
+    if (!/^## Next\b/.test(part)) out.push(part);
+    else if (at < 0) {
+      at = out.length;
+      out.push(next);
+    }
+  }
+  if (at < 0) return `${text.trimEnd()}\n\n${next}`;
+  if (at < out.length - 1) out[at] += '\n';
+  return out.join('').trimEnd() + '\n';
 }
 
 // How to save state at a handoff, cheapest first. Each extra request re-reads the whole

@@ -253,8 +253,10 @@ async function main() {
     const body = readFileSync(0, 'utf8');
     if (!body.trim()) throw new Error('status-next got an empty Next section on stdin');
     mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, replaceNext(existsSync(file) ? readFileSync(file, 'utf8') : '', body));
-    console.log(`saved Next in ${file}`);
+    const text = replaceNext(existsSync(file) ? readFileSync(file, 'utf8') : '', body);
+    writeFileSync(file, text);
+    const lines = text.split('\n').length - 1;
+    console.log(`saved Next in ${file} (${lines} lines${lines > 80 ? '; over 80, trim the other sections' : ''})`);
     return;
   }
 

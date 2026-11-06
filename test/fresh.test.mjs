@@ -104,6 +104,34 @@ test('replaceNext swaps only the Next body and appends one when missing', () => 
   assert.equal(replaceNext('', '1. new'), '# STATUS\n\n## Next\n1. new\n');
 });
 
+test('replaceNext keeps one Next section, so saving twice never grows the file', () => {
+  const dup = '# STATUS\n\n## Next\n1. a\n\n## Next\n1. a\n\n## Done\n- d\n\n## Next\n1. b\n';
+  const once = replaceNext(dup, '1. new');
+  assert.equal(once, '# STATUS\n\n## Next\n1. new\n\n## Done\n- d\n');
+  assert.equal(replaceNext(once, '1. new'), once);
+  // 2026-11-06: Python `s.replace('', block)` put a Next block between every character of the file.
+  const block = '## Next\nJust done: v\n- x\n\n';
+  const original = '# STATUS — t\n\nGoal: g\n\n## Done\n- a\n\n## Next\n1. old\n';
+  const shredded = block + [...original].join(block) + block;
+  const healed = replaceNext(shredded, '1. new');
+  assert.equal((healed.match(/## Next/g) || []).length, 1);
+  assert.ok(healed.length < 40, healed);
+  assert.equal(replaceNext(healed, '1. new'), healed);
+});
+
+test('status-next run twice leaves one Next and the same file', () => {
+  const { path } = repo();
+  const env = { ...process.env, SCOPE_DATA_DIR: tmp() };
+  writeFileSync(path, readFileSync(path, 'utf8') + '\n## Next\n1. copy\n'.repeat(50));
+  const run = () => execFileSync('node', ['bin/scope.mjs', 'status-next', path], { input: 'Just done: x\n- y\n', env, encoding: 'utf8' });
+  run();
+  const first = readFileSync(path, 'utf8');
+  const out = run();
+  assert.equal(readFileSync(path, 'utf8'), first);
+  assert.equal((first.match(/^## Next/gm) || []).length, 1);
+  assert.match(out, /\(11 lines\)/);
+});
+
 test('status-next CLI writes Next and refuses other files', () => {
   const { path } = repo();
   const env = { ...process.env, SCOPE_DATA_DIR: tmp() };
