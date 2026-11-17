@@ -32,6 +32,7 @@ Change them with `/scope:setup`, or `scope features set autoClear=on idleBlock=o
 ## Where state goes
 
 - Projects listed in `status.trustedRoots` keep their state in `STATUS.md` at the repo root (template in `templates/STATUS.md`). The list is empty by default, so a cloned repo's `STATUS.md` can never steer Claude.
+- Parallel sessions in one project: `STATUS.md` becomes the index (Goal, Decisions, shared Open questions, a `## Streams` table) and each work stream keeps its own `status/<slug>.md` (template `templates/stream.md`). A session saves only to its own stream file. At start scope loads the index plus the stream this session wrote last (kept across compaction and auto clear); a new session gets a one-line list of streams and picks one.
 - Everywhere else the state goes to a private file under `~/.local/share/scope/handoff/`, restored only after a clear in the same folder within 24 hours.
 
 To use repo `STATUS.md` files for your own projects, add their parent folder in `~/.config/scope/config.json`:
@@ -109,6 +110,7 @@ plugin สำหรับ Claude Code ที่ลด token ซึ่งถู�
 ### สถานะงานเก็บที่ไหน
 
 - โปรเจกต์ใต้โฟลเดอร์ใน `status.trustedRoots` เก็บใน `STATUS.md` ที่ root ของ repo ค่าเริ่มต้นว่าง เพื่อไม่ให้ `STATUS.md` ของ repo ที่ clone มาสั่ง Claude ได้
+- หลายเซสชันทำขนานในโปรเจกต์เดียว: `STATUS.md` เป็นสารบัญ (Goal, Decisions, คำถามรวม, ตาราง `## Streams`) แต่ละงานมีไฟล์ของตัวเอง `status/<slug>.md` (แม่แบบ `templates/stream.md`) เซสชันบันทึกเฉพาะไฟล์งานของตัวเอง ตอนเริ่ม scope โหลดสารบัญ + ไฟล์งานที่เซสชันนี้เขียนล่าสุด (คงอยู่ข้าม compact และ auto clear) เซสชันใหม่ได้รายการงานบรรทัดละงานแล้วเลือกเอง
 - ที่อื่นเก็บในไฟล์ส่วนตัวใต้ `~/.local/share/scope/handoff/` คืนให้เฉพาะหลัง clear ในโฟลเดอร์เดิมภายใน 24 ชั่วโมง
 
 ตอน handoff ถ้าเซสชันนี้เพิ่งเขียนไฟล์สถานะภายใน `handoff.fresh.turns` ข้อความ (ค่าเริ่มต้น 2) และไฟล์เปลี่ยนภายใน `handoff.fresh.minutes` นาที (ค่าเริ่มต้น 30) scope จะบอกแค่ว่าพิมพ์ `/clear` ได้เลย ไม่สั่งเขียนซ้ำ ถ้าไฟล์เก่า Claude แทนที่เฉพาะส่วน Next ในคำสั่งเดียว (`scope status-next <file>` ไม่ต้อง Read ก่อน) ส่งพร้อม tool call สุดท้ายของเทิร์น ไม่อ่านกลับ ไม่มีรอบยืนยันแยก

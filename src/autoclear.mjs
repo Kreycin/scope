@@ -93,8 +93,16 @@ function writeJson(path, value) {
 }
 
 // Remember that a handoff asked for a clear, so the next clear in this folder gets a recap.
-export function markPending(dataDir, { cwd, session, now = Date.now() }) {
-  writeJson(join(dataDir, PENDING), { cwd, session, at: now });
+export function markPending(dataDir, { cwd, session, stream = null, now = Date.now() }) {
+  writeJson(join(dataDir, PENDING), stream ? { cwd, session, stream, at: now } : { cwd, session, at: now });
+}
+
+// The stream file the cleared session worked on, read before takePending consumes the mark.
+export function pendingStream(dataDir, { cwd, source, now = Date.now() }) {
+  const p = readJson(join(dataDir, PENDING), null);
+  if (!p?.stream || p.cwd !== cwd || now - p.at > PENDING_MAX_MS) return null;
+  const cleared = source === 'clear' || (source === 'startup' && now - p.at <= STARTUP_MAX_MS);
+  return cleared ? p.stream : null;
 }
 
 // SessionStart after a clear (or the desktop tool's fresh startup): consume the mark, record the exports made since it, return recap context.

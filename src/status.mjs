@@ -1,12 +1,15 @@
 // Project state file: a short STATUS.md at the repo root that a fresh session reads
 // instead of inheriting a long conversation.
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename, dirname, join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 import { userText } from './simulate.mjs';
 
 export const STATUS_FILE = 'STATUS.md';
+// Parallel sessions in one project: STATUS.md is the index, each work stream keeps its own
+// status/<slug>.md, so two sessions never rewrite each other's Next (2026-11-17).
+export const STREAMS_DIR = 'status';
 
 // Nearest STATUS.md walking up to the git root; never $HOME itself.
 export function findStatus(cwd, home = homedir()) {
@@ -50,14 +53,104 @@ export function isTrusted(path, roots, home = homedir()) {
   });
 }
 
-export function loadStatusContext(cwd, { maxChars, trustedRoots }) {
+export function loadStatusContext(cwd, { maxChars, trustedRoots }, own = null) {
   const path = findStatus(cwd);
   if (!path || !isTrusted(path, trustedRoots)) return null;
   try {
-    return statusContext(path, readFileSync(path, 'utf8'), maxChars);
+    const text = readFileSync(path, 'utf8');
+    const streams = streamPaths(path);
+    if (!streams.length && !hasStreamsTable(text)) return statusContext(path, text, maxChars);
+    return streamsContext(path, text, streams, own && streams.includes(own) ? own : null, maxChars);
   } catch {
     return null;
   }
+}
+
+// status/<slug>.md files next to the index (names starting with _ are templates or archives).
+export function streamPaths(statusPath) {
+  const dir = join(dirname(statusPath), STREAMS_DIR);
+  try {
+    return readdirSync(dir).filter((f) => f.endsWith('.md') && !f.startsWith('_')).sort().map((f) => join(dir, f));
+  } catch {
+    return [];
+  }
+}
+
+export function hasStreamsTable(text) {
+  return /^## Streams\b/m.test(text);
+}
+
+// A stream file: <project>/status/<slug>.md with the project's STATUS.md one level up.
+export function isStreamFile(path) {
+  const p = resolve(path);
+  return basename(dirname(p)) === STREAMS_DIR && p.endsWith('.md') && existsSync(join(dirname(dirname(p)), STATUS_FILE));
+}
+
+// One line per stream: slug, last change, first Next item.
+export function streamLine(path, now = Date.now()) {
+  let text = '';
+  let day = '?';
+  try {
+    text = readFileSync(path, 'utf8');
+    day = new Date(statSync(path).mtimeMs).toISOString().slice(0, 10);
+  } catch {}
+  const next = /^## Next[^\n]*\n([\s\S]*?)(?=^## |$(?![\s\S]))/m.exec(text)?.[1] ?? '';
+  const first = next.split('\n').map((l) => l.trim()).find((l) => l && !/^just done/i.test(l)) ?? '(no Next)';
+  return `- ${basename(path, '.md')} (updated ${day}): ${first.slice(0, 140)}`;
+}
+
+// The stream this session wrote last in this project: an Edit/Write of status/<slug>.md or a status-next on it.
+export function streamFromLines(lines, statusPath) {
+  const dir = join(dirname(statusPath), STREAMS_DIR) + '/';
+  let found = null;
+  for (const line of lines) {
+    if (!line.includes('/' + STREAMS_DIR + '/')) continue;
+    let row;
+    try {
+      row = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (row.type !== 'assistant') continue;
+    for (const b of row.message?.content ?? []) {
+      if (b.type !== 'tool_use') continue;
+      const file = b.input?.file_path ? resolve(b.input.file_path) : null;
+      if (file && file.startsWith(dir) && file.endsWith('.md')) found = file;
+      const cmd = b.name === 'Bash' ? b.input?.command ?? '' : '';
+      const m = cmd.includes('status-next') ? /status-next\s+"([^"]+)"/.exec(cmd) : null;
+      if (m && resolve(m[1]).startsWith(dir)) found = resolve(m[1]);
+    }
+  }
+  return found;
+}
+
+const STREAM_RULE =
+  `edit only your own stream file; touch STATUS.md only to add or close your row in its Streams table ` +
+  `(Goal, Decisions and shared Open questions there change only when the user decides something for the whole project)`;
+
+// Project with parallel streams: the index, plus this session's own stream when known,
+// else a one-line list so the session picks (or starts) its stream without loading the others.
+export function streamsContext(path, text, streams, own, maxChars) {
+  const index = text.length > maxChars ? text.slice(0, maxChars) : text;
+  if (own) {
+    let body = '';
+    try {
+      body = readFileSync(own, 'utf8');
+    } catch {}
+    if (body.length > maxChars) body = body.slice(0, maxChars);
+    return (
+      `scope: project index from ${path} and your stream ${own} (read these instead of asking what was done; ` +
+      `continue from your stream's Next; ${STREAM_RULE}):\n\n${index}\n\n--- ${own} ---\n\n${body}`
+    );
+  }
+  const list = streams.map((p) => streamLine(p)).join('\n') || '- (no stream files yet)';
+  return (
+    `scope: project index from ${path}. This project runs parallel sessions, one work stream each, every stream in ` +
+    `${join(dirname(path), STREAMS_DIR)}/<slug>.md (Goal, Done, Next, Open questions; under 80 lines). ` +
+    `Do not load them all. From the user's first message pick yours: continuing a stream below -> Read only that file ` +
+    `and continue from its Next; new work -> create ${STREAMS_DIR}/<slug>.md and add a row to the Streams table; ` +
+    `unclear -> ask the user which stream in one short question. Then ${STREAM_RULE}.\n\nStreams:\n${list}\n\n${index}`
+  );
 }
 
 // Outside trusted roots the handoff state goes to a private file only Claude writes,
@@ -152,6 +245,10 @@ export function saveClause(target, save = {}, ride = RIDE_ALONG) {
       `\`node "${save.cli}" status-next "${save.path}" <<'EOF'\` with the new Next section body, then EOF ` +
       `(first line "Just done: ..." for what this session finished, then next steps, running work and open questions; under ~30 lines); ` +
       `it replaces only Next and keeps the other sections (if you already Read the file in this session, one Edit of Next works too).` + ride;
+  }
+  if (save.stream) {
+    return `write ${target} in one Write call (Goal, Done, Next, Open questions; under ~80 lines; ` +
+      `rewrite stale lines instead of appending; keep an existing file's language and layout) and do not Read it back.` + ride;
   }
   return `write ${target} in one Write call (Goal, Done, Decisions, Key files, Next, Open questions; under ~80 lines; ` +
     `rewrite stale lines instead of appending; keep an existing file's language and layout) and do not Read it back.` + ride;

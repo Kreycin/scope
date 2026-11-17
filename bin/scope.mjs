@@ -10,13 +10,13 @@ import { findBigSkills, readNewLines, bigSkillNote } from '../src/bigskill.mjs';
 import { idleCheck } from '../src/idle.mjs';
 import { audit, formatAudit, lastContextTokens } from '../src/audit.mjs';
 import { breakdownAll, formatBreakdown } from '../src/breakdown.mjs';
-import { loadStatusContext, isTrusted, privateStatusPath, loadPrivateStatus, findStatus, statusFreshness, replaceNext, STATUS_FILE } from '../src/status.mjs';
+import { loadStatusContext, isTrusted, privateStatusPath, loadPrivateStatus, findStatus, statusFreshness, replaceNext, STATUS_FILE, streamPaths, hasStreamsTable, streamFromLines, isStreamFile, STREAMS_DIR } from '../src/status.mjs';
 import { simulateAll, formatSimulation } from '../src/simulate.mjs';
 import { windowAll, formatWindow } from '../src/window.mjs';
 import { loadState, saveState, pruneSessions, log } from '../src/store.mjs';
 import { readGuard } from '../src/readguard.mjs';
 import { isHeadless } from '../src/env.mjs';
-import { autoClearOn, markPending, takePending, pruneExports } from '../src/autoclear.mjs';
+import { autoClearOn, markPending, takePending, pendingStream, pruneExports } from '../src/autoclear.mjs';
 import { loadConfig, withDefaults, userConfigPath, readUserConfig, deepMerge } from '../src/config.mjs';
 import { listFeatures, setFeatures } from '../src/features.mjs';
 
@@ -141,15 +141,29 @@ async function runHook(event, config) {
           budget < 500
             ? { ...config, handoff: { ...config.handoff, jev: { ...config.handoff.jev, enabled: false, noTime: true } } }
             : { ...config, handoff: { ...config.handoff, jev: { ...config.handoff.jev, timeoutMs: budget } } };
+        // Parallel streams: the session saves to its own status/<slug>.md, never the shared index.
+        const index = restorable ? findStatus(input.cwd) : null;
+        const streamMode = !!index && (streamPaths(index).length > 0 || hasStreamsTable(readFileSync(index, 'utf8')));
+        let own = null;
+        if (streamMode) {
+          own = streamFromLines(lines, index) ?? state.stream?.[input.session_id] ?? null;
+          if (own) state.stream = { [input.session_id]: own };
+        }
         // Untrusted folders save to a private file instead of the repo's STATUS.md.
         const target = restorable
-          ? 'STATUS.md at the repo root'
+          ? streamMode
+            ? own
+              ? `your stream file ${own}`
+              : `your stream file ${join(dirname(index), STREAMS_DIR)}/<slug>.md (the stream you work on in the Streams table of ${index}; new work gets a new file and a row there; never another stream's file)`
+            : 'STATUS.md at the repo root'
           : input.cwd
             ? `${privateStatusPath(dataDir, input.cwd)} (private handoff file; create its folder if missing)`
             : null;
         // A file this session saved a moment ago needs no rewrite; a stale one gets only its Next replaced.
-        const statusPath = !target ? null : restorable ? findStatus(input.cwd) : privateStatusPath(dataDir, input.cwd);
-        const save = statusPath ? { ...statusFreshness(lines, statusPath, config.handoff.fresh), path: statusPath, cli: fileURLToPath(import.meta.url) } : {};
+        const statusPath = !target ? null : restorable ? (streamMode ? own : index) : privateStatusPath(dataDir, input.cwd);
+        const save = statusPath
+          ? { ...statusFreshness(lines, statusPath, config.handoff.fresh), path: statusPath, cli: fileURLToPath(import.meta.url), stream: streamMode }
+          : streamMode ? { stream: true } : {};
         const d = !config.handoff.enabled ? { state, log: null } : await decide(
           { sessionId: input.session_id, contextTokens, lines, prompt: input.prompt, restorable: !!target, target: target ?? undefined, autoClear: !!target && autoClearOn(config, { headless }), save },
           state,
@@ -160,7 +174,7 @@ async function runHook(event, config) {
         if (d.note) {
           message = d.note.message;
           contexts.push(d.note.context);
-          if (d.autoClear) markPending(dataDir, { cwd: resolve(input.cwd), session: input.session_id });
+          if (d.autoClear) markPending(dataDir, { cwd: resolve(input.cwd), session: input.session_id, stream: own });
         }
       } catch {}
       if (config.bigSkill.enabled) try {
@@ -178,7 +192,13 @@ async function runHook(event, config) {
     }
   }
   if (event === 'SessionStart' && ['startup', 'clear', 'compact'].includes(input.source ?? 'startup')) {
-    let s = loadStatusContext(input.cwd, config.status);
+    // Own stream: this session's (compaction keeps the id), else the one an auto clear just handed over.
+    let own = state.stream?.[input.session_id] ?? null;
+    try {
+      if (!own && input.cwd) own = pendingStream(dataDir, { cwd: resolve(input.cwd), source: input.source });
+    } catch {}
+    let s = loadStatusContext(input.cwd, config.status, own);
+    if (s && own && s.includes(`your stream ${own}`)) state.stream = { [input.session_id]: own };
     if (!s && input.cwd && input.source === 'clear') s = loadPrivateStatus(dataDir, input.cwd, config.status);
     try {
       const recap = s && input.cwd ? takePending(dataDir, { cwd: resolve(input.cwd), source: input.source }) : null;
@@ -201,7 +221,7 @@ async function runHook(event, config) {
     return;
   }
   saveState(dataDir, input.session_id, state, loadedLeftOn);
-  log(dataDir, { cmd: event, session: input.session_id, message, context: contexts.filter((c) => !c.startsWith('scope: project state')), statusChars });
+  log(dataDir, { cmd: event, session: input.session_id, message, context: contexts.filter((c) => !c.startsWith('scope: project state') && !c.startsWith('scope: project index')), statusChars });
   const out = {};
   if (message) out.systemMessage = message;
   if (contexts.length) out.hookSpecificOutput = { hookEventName: event, additionalContext: contexts.join('\n\n') };
@@ -247,13 +267,15 @@ async function main() {
   // Handoff saves: Claude pipes the new Next section here instead of Reading the file to Edit it.
   if (cmd === 'status-next') {
     const file = rest[0] ? resolve(rest[0]) : null;
-    if (!file || (!file.endsWith('/' + STATUS_FILE) && !file.startsWith(join(dataDir, 'handoff') + '/'))) {
-      throw new Error('status-next needs a STATUS.md or private handoff file path');
+    const stream = !!file && isStreamFile(file);
+    if (!file || (!file.endsWith('/' + STATUS_FILE) && !stream && !file.startsWith(join(dataDir, 'handoff') + '/'))) {
+      throw new Error('status-next needs a STATUS.md, status/<slug>.md stream or private handoff file path');
     }
     const body = readFileSync(0, 'utf8');
     if (!body.trim()) throw new Error('status-next got an empty Next section on stdin');
     mkdirSync(dirname(file), { recursive: true });
-    const text = replaceNext(existsSync(file) ? readFileSync(file, 'utf8') : '', body);
+    const old = existsSync(file) ? readFileSync(file, 'utf8') : stream ? `# ${file.split('/').pop().replace(/\.md$/, '')}\n` : '';
+    const text = replaceNext(old, body);
     writeFileSync(file, text);
     const lines = text.split('\n').length - 1;
     console.log(`saved Next in ${file} (${lines} lines${lines > 80 ? '; over 80, trim the other sections' : ''})`);

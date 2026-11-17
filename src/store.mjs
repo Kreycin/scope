@@ -57,6 +57,7 @@ export function loadState(dataDir, sessionId) {
     if (sess.skillScan !== undefined) state.skillScan = { [sessionId]: sess.skillScan };
     if (sess.stalledClear !== undefined) state.stalledClear = { [sessionId]: sess.stalledClear };
     if (sess.readGuard !== undefined) state.readGuard = { [sessionId]: sess.readGuard };
+    if (sess.stream !== undefined) state.stream = { [sessionId]: sess.stream };
   }
   return state;
 }
@@ -78,6 +79,8 @@ export function saveState(dataDir, sessionId, state, loaded = []) {
   if (stalledClear !== undefined) slice.stalledClear = stalledClear;
   const readGuard = state.readGuard?.[sessionId];
   if (readGuard !== undefined) slice.readGuard = readGuard;
+  const stream = state.stream?.[sessionId];
+  if (stream !== undefined) slice.stream = stream;
   atomicWrite(join(dataDir, 'sessions', `${fid}.json`), JSON.stringify(slice));
 
   const leftOn = state.leftOn ?? [];
