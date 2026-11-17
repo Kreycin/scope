@@ -86,11 +86,11 @@ export function handoffNote(contextTokens, reason, restorable = true, target = '
   const context =
     `scope: context is ${k}k tokens and every request re-reads it; a step looks finished (${reason}). ` +
     (reason === 'size'
-      ? `Handle the user's message, but do not skip this handoff: finish only the edit or command in hand; unfinished steps and open questions go into Next. `
+      ? `Handle the user's message and keep working on it to the end: never stop, pause or wait for /clear because of this note (Nick 2026-11-17). Save state alongside your next tool call so a /clear at any point loses nothing; unfinished steps and open questions go into Next. `
       : `Handle the user's message first; if it continues unfinished work in this session, finish that step before handing off. `) +
     BACKGROUND_CLAUSE +
     `Then ${saveClause(target, save)} ` +
-    `In the same reply, tell the user in one line that state is saved and they can type /clear to continue from it; no separate confirmation turn.`;
+    `Mention once, in one line of your final reply when the task is done, that state is saved and they can type /clear to continue from it; no separate confirmation turn.`;
   return { message, context };
 }
 

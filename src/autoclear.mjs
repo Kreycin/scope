@@ -37,11 +37,11 @@ export function autoClearNote(contextTokens, reason, target = 'STATUS.md at the 
   const context =
     (size
       ? `scope: context is ${k}k tokens, over the handoff limit, and every request re-reads it. ` +
-        `Handle the user's message, but do not skip this handoff: finish only the edit or command in hand; unfinished steps, open questions and running work go into Next. `
+        `Handle the user's message and finish the task first: never stop or cut work short because of this note (Nick 2026-11-17); only once nothing is left to do this turn, do the handoff below. Unfinished steps, open questions and running work go into Next. `
       : `scope: context is ${k}k tokens and every request re-reads it; a step looks finished (${reason}). ` +
         `Handle the user's message first; if it continues unfinished work in this session or you asked the user something, finish or wait and skip the rest of this note. `) +
     BACKGROUND_CLAUSE +
-    `At the end of this turn: ${saveClause(target, save, ` Send that call in parallel with the ToolSearch call below.`)} Put anything the user still needs from your reply into Next. Then ` +
+    `At the end of this turn, after the task is done: ${saveClause(target, save, ` Send that call in parallel with the ToolSearch call below.`)} Put anything the user still needs from your reply into Next. Then ` +
     `load ${EXPORT_TOOL}, ${CLEAR_TOOL} and ${TITLE_TOOL} in one ToolSearch call (if export or clear is missing, tell the user state is saved and to type /clear, and stop); ` +
     `call the export with session_id "self" (if it is refused, tell the user state is saved, the export failed, and to type /clear when ready, and stop); ` +
     `set this session's title to "${CLEARED_TITLE}" (skip it if the title tool is missing or refused); ` +

@@ -113,7 +113,7 @@ test('background work never counts as unfinished; over the limit the handoff can
   assert.match(signal, /background workers/);
   assert.match(signal, /skip the rest of this note/);
   const size = autoClearNote(320000, 'size').context;
-  assert.match(size, /do not skip this handoff/);
+  assert.match(size, /never stop or cut work short/);
   assert.doesNotMatch(size, /skip the rest of this note/);
   assert.match(size, /background workers/);
 });
@@ -134,4 +134,13 @@ test('an export with no clear after it asks for the clear once', async () => {
   assert.notEqual(d2.log?.gate, 'stalled-clear');
   const off = await decide({ sessionId: 't', contextTokens: 120000, lines, prompt: 'x', autoClear: false }, {}, cfg);
   assert.notEqual(off.log?.gate, 'stalled-clear');
+});
+
+test('handoff notes never tell Claude to stop mid-task (Nick 2026-11-17)', async () => {
+  const {handoffNote} = await import('../src/boundary.mjs');
+  const {autoClearNote} = await import('../src/autoclear.mjs');
+  for (const n of [handoffNote(320000, 'size'), handoffNote(320000, 'step'), autoClearNote(320000, 'size')]) {
+    assert.doesNotMatch(n.context, /finish only the edit or command in hand/);
+  }
+  assert.match(handoffNote(320000, 'size').context, /never stop, pause or wait for \/clear/);
 });
